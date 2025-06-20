@@ -1,0 +1,179 @@
+---
+title: "Breast Survival Analysis"
+author: "Ogechi Koel"
+format: docx
+editor: visual
+---
+
+Hormone driven breast cancer is crossly linked to estrogen and progesterone. Most of breast cancers (70-80% ) are hormone estrogen-receptor positive or progesterone receptor receptive implying that they grow in response to these hormones. Hormonal therapy treatments like tamoxifen and aromatose inhibitors slow cancer growth.
+
+In this study hormonal therapy was one of the treatments whose effect was being studied. Henceforth, I am going to employ various statistical and survival analysis methods to determine whether there was a difference in survival time between the patients who received the treatment and those who did not. Also, I will be studying how the individual covariates affected the survival time of the patients.
+
+```{r warning=FALSE, message=FALSE}
+ #loading the required packages 
+library(tidyverse)
+library(here)
+library(survminer)
+library(survival)
+library(broom)
+library(forestplot)
+
+#importing the data
+data <- read.csv(here("data", "breast_cancer_R.csv"))
+```
+
+Data Exploration and pre-processing
+
+```{r warning=FALSE, message=FALSE}
+#Viewing the first 6 rows 
+head(data)
+
+#glimpse of the data
+glimpse(data)
+
+#converting the varaibles to appropriate classes
+data <- data %>% mutate_if(is.character, as.factor)
+
+#checking for missing values 
+sum(is.na(data))
+
+#checking for duplicates 
+sum(duplicated(data))
+#Fitting a kaplan Meier curve 
+
+```
+
+The dataset had 686 rows and 10 variables. Of the ten variables the survival time was represented by ‘time’ while the event variable was represented by ‘cens’. Hormonal therapy was represented by ‘horTh’.
+
+[Other Covariates]{.underline}
+
+Age - age of the patients.
+
+menostat - menopause status of the patient
+
+tsize - tumor size
+
+tgrade - tumor grade
+
+pnode - number of positive lymph nodes
+
+progrec - progesterone level
+
+estrec - Estrogen level
+
+**Fitting the Kaplan Meier Curve**
+
+```{r warning=FALSE, message=FALSE}
+#creating the survival object 
+km <- survfit(Surv(time, cens)~horTh, data = data)
+
+km
+
+```
+
+There were 440 patients who were not receiving hormonal therapy at the beginning of the study, 205 died during the study. There were 246 patients who were receiving hormonal therapy at the beginning of study 94 experienced the event during the study.
+
+Half of the patients who were not receiving hormonal therapy survived beyond time point 1528 days.
+
+Half of the patients who were nreceiving hormonal therapy survived beyond time point 2018 days
+
+```{r warning=FALSE, message=FALSE}
+#plotting the kaplan meier curve
+ggsurvplot(km, 
+           data = data,
+           conf.int = TRUE, # shows the confidence margins around the survival curves
+           pval = TRUE, #shows the pvalue the log rank test
+           risk.table = TRUE,
+           surv.median.line = "hv", # horizontal vertical dotten line 
+           legend.title = "Hormonal Therapy",
+           title = "Kaplan Meier curve for breast\ncancer patients",
+           censor = TRUE #shows the censoring lines
+           )
+```
+
+The p-value shown in the kaplan meire curve above is from the log-rank test which is used if there were a statistically significant difference between the survival times of the two groups. Our p-value is 0.0034 indicates that there is a statistically significant difference between the two groups.
+
+From the graph, patients who received hormonal therapy survived longer compared to those who did not. This can be further reinforced by the median survival time of the two groups.
+
+FITTING THE COX PROPORTIONAL MODEL
+
+```{r warning=FALSE, message=FALSE}
+cox_model <- coxph(Surv(time, cens)~horTh+age+menostat+ tsize+
+                     tgrade+pnodes+progrec+estrec, data = data)
+#I adjusted for the other covariates in the cox model above 
+```
+
+[Checking if the Proportional Hazards Assumption Holds]{.underline}
+
+```{r warning=FALSE, message=FALSE}
+cox.zph(cox_model)
+```
+
+Several covariates (age, menopause status, tumor grade, progesterone level, estrogen level) do not satisfy the proportional hazards assumption.
+
+The global test also fails (p = 0.0037), meaning the model as a whole violates the assumption.
+
+```{r warning=FALSE, message=FALSE}
+#FIXING THE VIOLATION OF THE PROPORTIONAL HAZARDS ASSUMPTION
+
+#stratifying menopause status and tumor grade 
+set.seed(123)
+cox_model_1 <- coxph(Surv(time, cens)~horTh+age+strata(menostat)+ tsize+
+                     strata(tgrade)+pnodes+progrec+estrec, data = data)
+cox.zph(cox_model_1)
+
+```
+
+I decided to stratify tumor grade and menopause status which were not holding the Proportional Hazards before. After stratification of the two, the other remaining variables holds the assumption.
+
+```{r warning=FALSE, message=FALSE}
+#extracting the model coefficients using broom
+df <- tidy(cox_model_1, exponentiate = TRUE, conf.int = TRUE)
+
+```
+
+Plotting the forest plot
+
+```{r warning=FALSE, message=FALSE}
+#FOREST PLOT
+
+# Prepare text and numeric inputs
+tabletext <- cbind(
+  Variable = df$term,
+  HR = sprintf("%.2f", df$estimate),
+  CI = sprintf("%.2f – %.2f", df$conf.low, df$conf.high)
+)
+
+# Numeric data for the plot
+hr <- df$estimate
+ci_lower <- df$conf.low
+ci_upper <- df$conf.high
+
+# Forest plot
+forestplot(labeltext = tabletext,
+           mean = hr,
+           lower = ci_lower,
+           upper = ci_upper,
+           xlog = TRUE,
+           title = "Hazard Ratios from the Cox Model",
+           zero = 1)
+
+```
+
+**Hormonal therapy**
+
+Hazard Ratio (HR): 0.70
+
+-Patients who received hormonal therapy had a 30% lower risk of death compared to those who did not receive this treatment.
+
+-Confidence Interval (CI): 0.54–0.90
+
+ Since the HR is less than 1 and the confidence interval does not include 1, this suggests that hormonal therapy is significantly associated with improved survival.
+
+[**Number of Positive Lymph nodes**]{.underline}
+
+Hazard Ratio: 1.05
+
+Confidence interval: (1.03-1.07)
+
+Every extra lymph node found to contain cancer is linked to a 5% increase in the chance of dying from the disease. This finding is statistically reliable and suggests that the spread of cancer to lymph nodes worsens outcomes.
