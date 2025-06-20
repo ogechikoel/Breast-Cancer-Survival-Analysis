@@ -50,4 +50,26 @@ Covariates included: horTh, age, menostat, tsize, tgrade, pnodes, progrec, estre
 
 Initial model failed the proportional hazards assumption
 
+**3. Adjusted Cox Model**
+Stratified by: menostat, tgrade
+
+Final model satisfies proportional hazards assumption
+Key findings:
+Hormonal Therapy: HR = 0.70 (CI: 0.54–0.90)
+→ 30% lower risk of death
+
+Positive Lymph Nodes: HR = 1.05 (CI: 1.03–1.07)
+→ 5% increased risk per additional node
+
+---
+## 📦 R Packages Used
+
+- [`tidyverse`](https://www.tidyverse.org/) – Data manipulation and visualization
+- [`here`](https://cran.r-project.org/package=here) – Simplifies file referencing
+- [`survival`](https://cran.r-project.org/package=survival) – Core package for survival analysis
+- [`survminer`](https://cran.r-project.org/package=survminer) – Beautiful survival curves and statistics
+- [`broom`](https://cran.r-project.org/package=broom) – Tidy model outputs
+- [`forestplot`](https://cran.r-project.org/package=forestplot) – Create forest plots from model estimates
+
+
 
