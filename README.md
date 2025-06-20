@@ -32,4 +32,22 @@ Variables: 10 columns
 
 -estrec — Estrogen receptor level
 
+---
+## 📊 Methods Used
+**1. Kaplan-Meier Survival Analysis**
+Stratified by hormonal therapy (horTh)
+
+Median survival:
+
+   Without therapy: 1528 days
+
+   With therapy: 2018 days
+
+Log-rank test p-value: 0.0034 → significant difference
+
+**2. Cox Proportional Hazards Model**
+Covariates included: horTh, age, menostat, tsize, tgrade, pnodes, progrec, estrec
+
+Initial model failed the proportional hazards assumption
+
 
